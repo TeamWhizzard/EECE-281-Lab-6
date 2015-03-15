@@ -9,8 +9,8 @@ volatile int readValues = 0;
 
 void setup() {
   Serial.begin(115200);
-  pinMode(BUTTON, INPUT);
-  digitalWrite(BUTTON, HIGH);
+  pinMode(BUTTON, INPUT_PULLUP);
+  // digitalWrite(BUTTON, HIGH);
   attachInterrupt(1, buttonISR, FALLING);
 }
 
