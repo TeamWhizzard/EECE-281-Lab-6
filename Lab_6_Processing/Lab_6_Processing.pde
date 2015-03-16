@@ -79,6 +79,7 @@ void draw() {
 void serialEvent(Serial p) {
   int dataIn = byte(aPort.read()) & 0xFF;
   voltageValues.add(dataIn);
+  //println(dataIn);
 }
 
 
@@ -96,7 +97,7 @@ void drawCurve() { // starting index
     volts = float(voltageValues.remove());
     volts = map(volts, 0, 255, 0, 5);
     volts = map(volts, 0, 5, 0, OSCILLOSCOPE_HEIGHT);
-    println(volts);
+    //println(voltageValues.size());
     curveVertex(xCoord, volts); 
     xCoord+= OSCILLOSCOPE_WIDTH / numDispValues;
   }

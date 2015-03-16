@@ -24,12 +24,11 @@ volatile unsigned long timer;
 void setup() {
   Serial.begin(115200);
   pinMode(BUTTON, INPUT_PULLUP);
-  attachInterrupt(1, buttonISR, FALLING); // Arduino interrupt 1 connects to Digital Pin 2
+  //attachInterrupt(1, buttonISR, FALLING); // Arduino interrupt 1 connects to Digital Pin 2
   adcSetup();
-  //Serial.println(F("WhizzardScope standing by..."));
 }
 void loop() {
-  if (readValues) {
+  //if (readValues) {
     timer = micros();
     numValuesRead = 0;
     while( (timer + READ_DURATION) > micros() ) {
@@ -40,8 +39,8 @@ void loop() {
     readValues = 0;
     Serial.println(" ");
     Serial.println(String(micros() - timer)); // output total time timer was on
-    Serial.println(String(numValuesRead);
-  }
+    Serial.println(String(numValuesRead));
+  //}
 }
 
 void buttonISR() {
