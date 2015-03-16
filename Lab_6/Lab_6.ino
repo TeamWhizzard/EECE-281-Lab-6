@@ -3,24 +3,27 @@
 // Fast: F,Hz,volts,volts,volts,D
 
 #define BUTTON 2
-#define READ_DURATION 15000
+#define READ_DURATION 2000000 // microseconds to sample for
 
 volatile int readValues = 0;
-
+volatile float voltage;
+volatile unsigned long lastRead;
+volatile unsigned long timer;
+    
 void setup() {
   Serial.begin(115200);
   pinMode(BUTTON, INPUT_PULLUP);
-  // digitalWrite(BUTTON, HIGH);
-  attachInterrupt(1, buttonISR, FALLING);
+  attachInterrupt(1, buttonISR, FALLING); // Arduino interrupt 1 connects to Digital Pin 2
+  Serial.println("WhizzardScope standing by....");
 }
 
 void loop() {
-  int sensorValue;
-  float voltage;
   if (readValues) {
-    unsigned long timer = millis();
-    while ((timer + READ_DURATION) > millis()) {
-      Serial.println(getOscilloscopeValue());
+    timer = micros();
+    while ((timer + READ_DURATION) > micros()) {
+      getOscilloscopeValue();
+      Serial.println( String(voltage) + ", " + String(micros()-lastRead));
+      lastRead = micros();
     }
     readValues = 0;
   }
@@ -32,6 +35,6 @@ void buttonISR() {
 
 float getOscilloscopeValue() {
   int sensorValue = analogRead(A0);
-  float voltage = sensorValue * (5.0 / 1023.0);
+  voltage = sensorValue * (5.0 / 1023.0);
   return voltage;
 }
