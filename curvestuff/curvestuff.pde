@@ -24,13 +24,16 @@ void setup()
 }
 
 void draw() {
+
   if (mode.equals("R") && display) { // display live
     int i;
     for(i = dispIndex; i <= valIndex; i++) {
+
       if (voltVal[i] >= dispThresh) { // check if threshold has been triggered
         dispIndex = i;  // set first index to display as value that triggered threshold
         
         // if not enough spaces to redraw, ends display
+
         if ((maxVal - dispIndex) < numDispValues) {
           display = false;
           break;
@@ -50,17 +53,20 @@ void draw() {
 
 /* oscilloscope control commands */
 void serialEvent(Serial p) {
+    println("1");
   String aIn = aPort.readStringUntil(',');
   aIn = aIn.replace(",", ""); // remove comma delimiter
   
+  println("2");
   if (aIn.equals("R") || aIn.equals("F")) { // set mode
     mode = aIn;
     display = true;
-    
+
   } else if (aIn.equals("D")) { // set start and end 
     display = false;
     
   } else { // add value to buffer
+        println("3");
     voltVal[valIndex] = float(aIn);
     valIndex++;
   }

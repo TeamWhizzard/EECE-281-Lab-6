@@ -1,3 +1,14 @@
+import processing.serial.*;
+import java.util.*;
+
+//Serial
+Serial aPort; // Arduino serial port
+
+//Voltage Readings
+Queue<Integer> voltageValues = new LinkedList<Integer>();
+static final int numDispValues = 5; // number of values that can be displayed simultaneously
+static final int threshold = 150;
+
 // Window Dimensions
 static final int WINDOW_X = 1000;
 static final int WINDOW_Y = 650;
@@ -12,7 +23,6 @@ static final int[] GRID_SIZES = {
   20, 25, 50, 100
 };
 static final int DEFAULT_GRID = 1;
-
 int currentGridIndex = 1;
 
 // Graphics Objects
@@ -22,6 +32,7 @@ PGraphics grid25;
 PGraphics grid50;
 PGraphics grid100;
 
+// Knob Objects
 knob knobbytest;
 
 void setup() {
@@ -29,6 +40,12 @@ void setup() {
   backgroundImage = loadImage("oscilloscope.png");
   background(backgroundImage);
 
+  //Serial Port
+  println(Serial.list()); // print list of open serial ports
+  aPort = new Serial(this, Serial.list()[1], 115200); // initialize serial port
+  aPort.buffer(1);
+
+  // Grids, TODO: Move to a function with a loop to create these
   grid20  = createGraphics(OSCILLOSCOPE_WIDTH, OSCILLOSCOPE_HEIGHT);
   makeGrid(grid20, 20);
   grid25  = createGraphics(OSCILLOSCOPE_WIDTH, OSCILLOSCOPE_HEIGHT);
@@ -41,17 +58,50 @@ void setup() {
   knobbytest = new knob("testknob.png", 900, 100);
   knobbytest.drawKnob();
 
-  noLoop();
+  //noLoop();
 }
 
 void draw() {
-  background(backgroundImage); // We need to redraw the background to clear the screen.
-  drawNextSizeGrid();
+  if (voltageValues.peek() != null) {
+    if (voltageValues.peek() >= threshold) {
+      if (voltageValues.size() >= numDispValues) {
+        background(backgroundImage); // We need to redraw the background to clear the screen.
+        drawCurve();
+      }
+    } else if (voltageValues.peek() < threshold) {
+      voltageValues.remove();
+    }
+  }
+
+  //drawNextSizeGrid();
 }
 
-void loop() {
+void serialEvent(Serial p) {
+  int dataIn = byte(aPort.read()) & 0xFF;
+  voltageValues.add(dataIn);
 }
 
+
+/* draws oscilloscope curve given starting index */
+void drawCurve() { // starting index
+  int xCoord = 0;
+  float volts;
+  //  clear(); // clear screen to redraw curve
+
+  smooth();
+  fill(255);
+
+  beginShape();
+  for (int i = 0; i < numDispValues; i++) {
+    volts = float(voltageValues.remove());
+    volts = map(volts, 0, 255, 0, 5);
+    volts = map(volts, 0, 5, 0, OSCILLOSCOPE_HEIGHT);
+    println(volts);
+    curveVertex(xCoord, volts); 
+    xCoord+= OSCILLOSCOPE_WIDTH / numDispValues;
+  }
+  endShape();
+}
 
 // Adjust Grid Sizing. Grid index must be between the sizes defined in GRID_SIZES.
 void makeGrid(PGraphics grid, int gridSize) {
@@ -67,7 +117,6 @@ void makeGrid(PGraphics grid, int gridSize) {
 }
 
 void mouseClicked() {
-
   redraw();
 }
 
