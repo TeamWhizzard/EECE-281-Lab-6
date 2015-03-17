@@ -1,3 +1,15 @@
+import processing.serial.*;
+import java.util.*;
+
+//Serial
+Serial aPort; // Arduino serial port
+
+//Voltage Readings
+Queue<Integer> voltageValues = new LinkedList<Integer>();
+static final int numDispValues = 5; // number of values that can be displayed simultaneously
+static final int threshold = 150;
+
+
 // Window Dimensions
 static final int WINDOW_X = 1000;
 static final int WINDOW_Y = 650;
@@ -31,6 +43,12 @@ static final String KNOB_ALPHA = "knob-alpha.png";
 void setup() {
   size(WINDOW_X, WINDOW_Y);
   backgroundImage = loadImage(OSCILLOSCOPE_IMAGE);
+
+  //Serial Port
+  println(Serial.list()); // print list of open serial ports
+  aPort = new Serial(this, Serial.list()[1], 115200); // initialize serial port
+  aPort.buffer(1);
+
   initGrids(); // Create the grids for rendering but don't draw them yet
   gridKnob = new knob(898, 200, 4); // Creates a knob at X, Y with W switch settings. 
 }
@@ -39,6 +57,44 @@ void draw() {
   background(backgroundImage); // We need to redraw the background to clear the screen.
   drawGrid(grids[currentGrid]);
   gridKnob.drawKnob();
+    if (voltageValues.peek() != null) {
+    if (voltageValues.peek() >= threshold) {
+      if (voltageValues.size() >= numDispValues) {
+        background(backgroundImage); // We need to redraw the background to clear the screen.
+        drawCurve();
+      }
+    } else if (voltageValues.peek() < threshold) {
+      voltageValues.remove();
+    }
+  }
+}
+
+void serialEvent(Serial p) {
+  int dataIn = byte(aPort.read()) & 0xFF;
+  voltageValues.add(dataIn);
+  //println(dataIn);
+}
+
+
+/* draws oscilloscope curve given starting index */
+void drawCurve() { // starting index
+  int xCoord = 0;
+  float volts;
+  //  clear(); // clear screen to redraw curve
+
+  smooth();
+  fill(255);
+
+  beginShape();
+  for (int i = 0; i < numDispValues; i++) {
+    volts = float(voltageValues.remove());
+    volts = map(volts, 0, 255, 0, 5);
+    volts = map(volts, 0, 5, 0, OSCILLOSCOPE_HEIGHT);
+    //println(voltageValues.size());
+    curveVertex(xCoord, volts); 
+    xCoord+= OSCILLOSCOPE_WIDTH / numDispValues;
+  }
+  endShape();
 }
 
 // create a grid
