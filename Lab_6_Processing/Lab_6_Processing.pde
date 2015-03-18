@@ -6,10 +6,10 @@ Serial aPort; // Arduino serial port
 
 //Voltage Readings
 Queue<Integer> voltageValues = new LinkedList<Integer>();
-int falloffCount = 10; // number of values that can be displayed simultaneously
+int falloffCount = 150; // number of values that can be displayed simultaneously
 int threshold = 150;
-//static final int BUFFER_FALLOFF = 11768;
 boolean oscilloscopeReady = false;
+static final int ARDUINO_SAMPLE_RATE = 11775; // Hz
 
 // Window Dimensions
 static final int WINDOW_X = 1000;
@@ -44,7 +44,8 @@ int currentGrid = 0;
 // Knob Objects
 knob gridKnob; // used for grid granularity adjustment
 knob threshKnob; // used for trigger threshold adjustment
-knob falloffKnob; // used to adjust number of samples displayed
+knob falloffKnob;
+
 static final String KNOB_IMAGE = "knob.png";
 static final String KNOB_ALPHA = "knob-alpha.png";
 
@@ -54,37 +55,63 @@ void setup() {
 
   //Serial Port
   println(Serial.list()); // print list of open serial ports
-  aPort = new Serial(this, Serial.list()[1], 115200); // initialize serial port
+  aPort = new Serial(this, Serial.list()[0], 115200); // initialize serial port
   aPort.buffer(1);
 
   initGrids(); // Create the grids for rendering but don't draw them yet
   gridKnob = new knob(898, 200, 4); // Creates a knob at X, Y with W switch settings.
   threshKnob = new knob(898, 350, 4); // Creates a knob at X, Y with W switch settings.
   falloffKnob = new knob(898, 500, 4); // Creates a knob at X, Y with W switch settings.
+  
+  // initialize GUI
+  background(backgroundImage);
+  drawGrid(grids[currentGrid]);
 }
 
 void draw() {
   if (voltageValues.peek() != null) {
     if (voltageValues.peek() >= threshold) {
       if (voltageValues.size() >= falloffCount) {
+  
         background(backgroundImage); // We need to redraw the background to clear the screen every time
+        drawGrid(grids[currentGrid]);
         drawCurve();
       }
+    } else {
+      voltageValues.remove(); 
     }
   }
-  drawGrid(grids[currentGrid]);
+
   drawGridBorder();
+  drawTextValues();
   gridKnob.drawKnob();
   threshKnob.drawKnob();
   falloffKnob.drawKnob();
 }
 
+int noiseRemoval = 0;
 void serialEvent(Serial p) {
   int dataIn = byte(aPort.read()) & 0xFF;
-  voltageValues.add(dataIn);
+  if (noiseRemoval > 100) {
+    voltageValues.add(dataIn);
+  } else {
+    noiseRemoval++;
+  }
+  
+  println(dataIn);
 }
 
-void checkThreshold() {
+void drawTextValues() {
+  textSize(32);
+  
+  // Time Scale of grid
+  int totalSegments = OSCILLOSCOPE_WIDTH / GRID_SIZES[currentGrid];
+  float scale = ARDUINO_SAMPLE_RATE / totalSegments;
+  text(scale, 898, 150);
+  
+  // falloff value
+  float fallScale = ARDUINO_SAMPLE_RATE / falloffCount;
+  text(fallScale, 898, 450);
 }
 
 void drawGridBorder() {
@@ -100,10 +127,11 @@ void drawGridBorder() {
 
 /* draws oscilloscope curve given starting index */
 void drawCurve() { // starting index
-  int time;
+  float time;
   float volts;
   pushMatrix();
   noFill();
+  curveTightness(1.0);
   translate(OSCILLOSCOPE_OFFSET - 3, OSCILLOSCOPE_OFFSET);
   strokeWeight(2);
   stroke(CURVE_COLOUR[0], CURVE_COLOUR[1], CURVE_COLOUR[2]);
@@ -111,15 +139,17 @@ void drawCurve() { // starting index
   for (int x = 0; x < falloffCount; x++) {
     // maps values to correct screen ratio
     volts = float(voltageValues.remove());
-    println(voltageValues.size());
-    volts = map(volts, 0, 255, 0, OSCILLOSCOPE_HEIGHT);
-    time = (int) map(x, 0, falloffCount, 0, OSCILLOSCOPE_WIDTH + 6);
+    //println(voltageValues.size());
+    volts = map(volts, 0, 255, 30, OSCILLOSCOPE_HEIGHT - 30);
+    time = map(x, 0, falloffCount, 0, OSCILLOSCOPE_WIDTH + 6);
+  //  println (time);
     curveVertex(time, volts);
   }
   endShape();
   popMatrix();
 
   voltageValues.clear();
+  //println(voltageValues.size());
 }
 
 // create a grid
@@ -167,25 +197,26 @@ void mousePressed() {
       threshold = 255;
       break;
     }
-  } 
+  }
 
-  if (falloffKnob.isMouseOver()) {
+  if (falloffKnob.isMouseOver()) { 
     falloffKnob.rotateKnob();
     switch(falloffKnob.position) {
     case 0:
-      falloffCount = OSCILLOSCOPE_WIDTH / 6;
+      falloffCount = 50;
       break;
     case 1:
-      falloffCount = OSCILLOSCOPE_WIDTH / 4;
+      falloffCount = 100;
       break;
     case 2:
-      falloffCount = OSCILLOSCOPE_WIDTH / 3;
+      falloffCount = 150;
       break;
-    case 3: 
-      falloffCount = OSCILLOSCOPE_WIDTH / 2;
+    case 3:
+      falloffCount = 197;
       break;
     }
-  }
+  } 
+
 }
 
 // Knob Class
