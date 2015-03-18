@@ -56,8 +56,8 @@ void setup() {
 
   //Serial Port
   println(Serial.list()); // print list of open serial ports
-  aPort = new Serial(this, Serial.list()[0], 115200); // initialize serial port
-  aPort.buffer(1);
+  //aPort = new Serial(this, Serial.list()[0], 115200); // initialize serial port
+  //aPort.buffer(1);
 
   initGrids(); // Create the grids for rendering but don't draw them yet
   gridKnob = new knob(898, 200, 4); // Creates a knob at X, Y with W switch settings.
@@ -103,16 +103,12 @@ void serialEvent(Serial p) {
 }
 
 void drawTextValues() {
-  textSize(32);
+  textSize(20);
   
-  // Time Scale of grid
+  // Time Scale of grid - calculated in microseconds
   int totalSegments = OSCILLOSCOPE_WIDTH / GRID_SIZES[currentGrid];
   float scale = ARDUINO_SAMPLE_RATE / totalSegments;
-  text(scale, 898, 150);
-  
-  // falloff value
-  float fallScale = ARDUINO_SAMPLE_RATE / falloffCount;
-  text(fallScale, 898, 450);
+  text(str(scale) + " us", 860, 150);
 }
 
 void drawGridBorder() {
