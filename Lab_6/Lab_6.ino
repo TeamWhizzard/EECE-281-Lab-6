@@ -37,9 +37,9 @@ void loop() {
       numValuesRead++;
     }
     readValues = 0;
-    Serial.println(" ");
-    Serial.println(String(micros() - timer)); // output total time timer was on
-    Serial.println(String(numValuesRead));
+//    Serial.println(" ");
+//    Serial.println(String(micros() - timer)); // output total time timer was on
+//    Serial.println(String(numValuesRead));
   //}
 }
 
@@ -74,7 +74,7 @@ void adcSetup() {
   //ADCSRB = 0b00000000 | ADCSRB;
   
   // suggested by music doods
-  DIDR1 = 0b00000000;
+  //DIDR1 = 0b00000000;
 }
 
 uint8_t adcRead() {

@@ -9,7 +9,6 @@ Queue<Integer> voltageValues = new LinkedList<Integer>();
 static final int numDispValues = 5; // number of values that can be displayed simultaneously
 static final int threshold = 150;
 
-
 // Window Dimensions
 static final int WINDOW_X = 1000;
 static final int WINDOW_Y = 650;
@@ -50,17 +49,17 @@ void setup() {
   aPort.buffer(1);
 
   initGrids(); // Create the grids for rendering but don't draw them yet
-  gridKnob = new knob(898, 200, 4); // Creates a knob at X, Y with W switch settings. 
+  gridKnob = new knob(898, 200, 4); // Creates a knob at X, Y with W switch settings.
 }
 
 void draw() {
-  background(backgroundImage); // We need to redraw the background to clear the screen.
-  drawGrid(grids[currentGrid]);
-  gridKnob.drawKnob();
-    if (voltageValues.peek() != null) {
+  //background(backgroundImage); // We need to redraw the background to clear the screen.
+  //drawGrid(grids[currentGrid]);
+  //gridKnob.drawKnob();
+  if (voltageValues.peek() != null) {
     if (voltageValues.peek() >= threshold) {
       if (voltageValues.size() >= numDispValues) {
-        background(backgroundImage); // We need to redraw the background to clear the screen.
+        gridKnob.drawKnob();
         drawCurve();
       }
     } else if (voltageValues.peek() < threshold) {
@@ -75,13 +74,11 @@ void serialEvent(Serial p) {
   //println(dataIn);
 }
 
-
 /* draws oscilloscope curve given starting index */
 void drawCurve() { // starting index
-  int xCoord = 0;
+  int xCoord = OSCILLOSCOPE_OFFSET;
   float volts;
-  //  clear(); // clear screen to redraw curve
-
+  pushMatrix();
   smooth();
   fill(255);
 
@@ -91,10 +88,11 @@ void drawCurve() { // starting index
     volts = map(volts, 0, 255, 0, 5);
     volts = map(volts, 0, 5, 0, OSCILLOSCOPE_HEIGHT);
     //println(voltageValues.size());
-    curveVertex(xCoord, volts); 
-    xCoord+= OSCILLOSCOPE_WIDTH / numDispValues;
+    curveVertex(xCoord, volts + OSCILLOSCOPE_OFFSET); 
+    xCoord+= (OSCILLOSCOPE_WIDTH / numDispValues);
   }
   endShape();
+  popMatrix();
 }
 
 // create a grid
@@ -155,15 +153,17 @@ class knob {
   }
 
   void drawKnob() {
+    pushMatrix();
     imageMode(CENTER); // Draws from the centre
     translate(x, y); // Moves our 0, 0 point to x and y so all references happen from a centralized point.
     rotate(radians(rotation)); // set knob orientation
     image(knobImage, 0, 0); // draw the knob in the window
+    popMatrix();
   }
 
   void rotateKnob() {
     switch (knotches) {
-      
+
     case 2: // States for a 2 position knob
       if (rotation == -45) {
         rotation += 90;
@@ -206,7 +206,7 @@ class knob {
       } else if (rotation == 30 && lastPosition == 1) {
         rotation += 60;
         lastPosition = 2;
-        position = 3;        
+        position = 3;
       } else if (rotation == 90) {
         rotation -= 60;
         lastPosition = 3;
