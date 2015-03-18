@@ -6,8 +6,10 @@ Serial aPort; // Arduino serial port
 
 //Voltage Readings
 Queue<Integer> voltageValues = new LinkedList<Integer>();
-int numDispValues = 5; // number of values that can be displayed simultaneously
+int falloffCount = 10; // number of values that can be displayed simultaneously
 int threshold = 150;
+//static final int BUFFER_FALLOFF = 11768;
+boolean oscilloscopeReady = false;
 
 // Window Dimensions
 static final int WINDOW_X = 1000;
@@ -19,6 +21,11 @@ static final int OSCILLOSCOPE_Y = 50;
 static final int OSCILLOSCOPE_OFFSET = 50;
 static final int OSCILLOSCOPE_WIDTH = 700;
 static final int OSCILLOSCOPE_HEIGHT = 500;
+static final int OSCILLOSCOPE_FLOOR = 549;
+static final int[] CURVE_COLOUR = {
+  255, 237, 11
+};
+//static final int[4] SEGMENTS_PER_DIVISION = {2, 100, 1000, 10000, 100000, 10000000}; // In Microseconds 
 
 // Background Image
 PImage backgroundImage;
@@ -57,21 +64,19 @@ void setup() {
 }
 
 void draw() {
-  background(backgroundImage); // We need to redraw the background to clear the screen.
+  if (voltageValues.peek() != null) {
+    if (voltageValues.peek() >= threshold) {
+      if (voltageValues.size() >= falloffCount) {
+        background(backgroundImage); // We need to redraw the background to clear the screen every time
+        drawCurve();
+      }
+    }
+  }
   drawGrid(grids[currentGrid]);
+  drawGridBorder();
   gridKnob.drawKnob();
   threshKnob.drawKnob();
   falloffKnob.drawKnob();
-  
-  if (voltageValues.peek() != null) {
-    if (voltageValues.peek() >= threshold) {
-      if (voltageValues.size() >= numDispValues) {
-        drawCurve();
-      }
-    } else if (voltageValues.peek() < threshold) {
-      voltageValues.remove();
-    }
-  }
 }
 
 void serialEvent(Serial p) {
@@ -79,27 +84,42 @@ void serialEvent(Serial p) {
   voltageValues.add(dataIn);
 }
 
+void checkThreshold() {
+}
+
+void drawGridBorder() {
+  pushMatrix();
+  noFill();
+  strokeWeight(3);
+  strokeCap(ROUND);
+  hint(ENABLE_STROKE_PURE); // This increases the draw quality of a stroke at the expense of performance
+  stroke(GRID_COLOUR[0], GRID_COLOUR[1], GRID_COLOUR[2]);
+  rect(OSCILLOSCOPE_OFFSET - 1, OSCILLOSCOPE_OFFSET -1, OSCILLOSCOPE_WIDTH + 1, OSCILLOSCOPE_HEIGHT + 1);
+  popMatrix();
+}
+
 /* draws oscilloscope curve given starting index */
 void drawCurve() { // starting index
-  int xCoord = OSCILLOSCOPE_OFFSET;
+  int time;
   float volts;
   pushMatrix();
-  smooth();
-  fill(255);
-
+  noFill();
+  translate(OSCILLOSCOPE_OFFSET - 3, OSCILLOSCOPE_OFFSET);
+  strokeWeight(2);
+  stroke(CURVE_COLOUR[0], CURVE_COLOUR[1], CURVE_COLOUR[2]);
   beginShape();
-  for (int i = 0; i < numDispValues; i++) {
+  for (int x = 0; x < falloffCount; x++) {
     // maps values to correct screen ratio
     volts = float(voltageValues.remove());
-    volts = map(volts, 0, 255, 0, 5);
-    volts = map(volts, 0, 5, 0, OSCILLOSCOPE_HEIGHT);
-    //println(voltageValues.size());
-
-    curveVertex(xCoord, volts + OSCILLOSCOPE_OFFSET); 
-    xCoord+= (OSCILLOSCOPE_WIDTH / numDispValues);
+    println(voltageValues.size());
+    volts = map(volts, 0, 255, 0, OSCILLOSCOPE_HEIGHT);
+    time = (int) map(x, 0, falloffCount, 0, OSCILLOSCOPE_WIDTH + 6);
+    curveVertex(time, volts);
   }
   endShape();
   popMatrix();
+
+  voltageValues.clear();
 }
 
 // create a grid
@@ -130,42 +150,42 @@ void mousePressed() {
     gridKnob.rotateKnob(); // Rotate the knob
     currentGrid = gridKnob.position; // Change the grid to the new position
   }
-  
+
   if (threshKnob.isMouseOver()) { 
     threshKnob.rotateKnob();
     switch(threshKnob.position) {
-      case 0:
-        threshold = 100;
-        break;
-      case 1:
-        threshold = 150;
-        break;
-      case 2:
-        threshold = 200;
-        break;
-      case 3:
-        threshold = 255;
-        break; 
+    case 0:
+      threshold = 100;
+      break;
+    case 1:
+      threshold = 150;
+      break;
+    case 2:
+      threshold = 200;
+      break;
+    case 3:
+      threshold = 255;
+      break;
     }
   } 
-  
+
   if (falloffKnob.isMouseOver()) {
     falloffKnob.rotateKnob();
     switch(falloffKnob.position) {
-      case 0:
-        numDispValues = OSCILLOSCOPE_WIDTH / 6;
-        break;
-      case 1:
-        numDispValues = OSCILLOSCOPE_WIDTH / 4;
-        break;
-      case 2:
-        numDispValues = OSCILLOSCOPE_WIDTH / 3;
-        break;
-      case 3: 
-        numDispValues = OSCILLOSCOPE_WIDTH / 2;
-        break;
+    case 0:
+      falloffCount = OSCILLOSCOPE_WIDTH / 6;
+      break;
+    case 1:
+      falloffCount = OSCILLOSCOPE_WIDTH / 4;
+      break;
+    case 2:
+      falloffCount = OSCILLOSCOPE_WIDTH / 3;
+      break;
+    case 3: 
+      falloffCount = OSCILLOSCOPE_WIDTH / 2;
+      break;
     }
-  }  
+  }
 }
 
 // Knob Class
