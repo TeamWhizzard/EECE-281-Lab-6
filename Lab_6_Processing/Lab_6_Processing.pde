@@ -56,8 +56,8 @@ void setup() {
 
   //Serial Port
   println(Serial.list()); // print list of open serial ports
-  //aPort = new Serial(this, Serial.list()[0], 115200); // initialize serial port
-  //aPort.buffer(1);
+  aPort = new Serial(this, Serial.list()[0], 115200); // initialize serial port
+  aPort.buffer(1);
 
   initGrids(); // Create the grids for rendering but don't draw them yet
   gridKnob = new knob(898, 200, 4); // Creates a knob at X, Y with W switch settings.
@@ -77,14 +77,15 @@ void draw() {
         background(backgroundImage); // We need to redraw the background to clear the screen every time
         drawGrid(grids[currentGrid]);
         drawCurve();
-      }
+        drawTextValues(); // dynamic labels  
+    }
     } else {
       voltageValues.remove(); 
     }
   }
 
   drawGridBorder(); // mask oscilloscope data
-  drawTextValues(); // dynamic labels
+  
   gridKnob.drawKnob();
   threshKnob.drawKnob();
   falloffKnob.drawKnob();
@@ -116,7 +117,7 @@ void drawGridBorder() {
   noFill();
   strokeWeight(3);
   strokeCap(ROUND);
-  hint(ENABLE_STROKE_PURE); // This increases the draw quality of a stroke at the expense of performance - enables anti - aliasing
+  //hint(ENABLE_STROKE_PURE); // This increases the draw quality of a stroke at the expense of performance - enables anti - aliasing
   stroke(GRID_COLOUR[0], GRID_COLOUR[1], GRID_COLOUR[2]);
   rect(OSCILLOSCOPE_OFFSET - 1, OSCILLOSCOPE_OFFSET -1, OSCILLOSCOPE_WIDTH + 1, OSCILLOSCOPE_HEIGHT + 1);
   popMatrix();
@@ -176,6 +177,7 @@ void mousePressed() {
   if (gridKnob.isMouseOver()) { // Test to see if the mouse was pressed on this knob.
     gridKnob.rotateKnob(); // Rotate the knob
     currentGrid = gridKnob.position; // Change the grid to the new position
+    //drawTextValues(); // dynamic labels
   }
 
   if (threshKnob.isMouseOver()) { 
