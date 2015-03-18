@@ -3,12 +3,14 @@ import java.util.*;
 
 //Serial
 Serial aPort; // Arduino serial port
+int noiseRemoval = 0; // skip initial serial readings to eliminiate innacurate values caused by noise
 
 //Voltage Readings
-Queue<Integer> voltageValues = new LinkedList<Integer>();
-int falloffCount = 150; // number of values that can be displayed simultaneously
-int threshold = 150;
-boolean oscilloscopeReady = false;
+Queue<Integer> voltageValues = new LinkedList<Integer>(); // linked list to sort serial data FIFO
+
+int falloffCount = 150; // number of values to be displayed simultaneously on the screen
+int threshold = 150; // oscilloscope trigger threshold
+
 static final int ARDUINO_SAMPLE_RATE = 11775; // Hz
 
 // Window Dimensions
@@ -24,8 +26,7 @@ static final int OSCILLOSCOPE_HEIGHT = 500;
 static final int OSCILLOSCOPE_FLOOR = 549;
 static final int[] CURVE_COLOUR = {
   255, 237, 11
-};
-//static final int[4] SEGMENTS_PER_DIVISION = {2, 100, 1000, 10000, 100000, 10000000}; // In Microseconds 
+}; 
 
 // Background Image
 PImage backgroundImage;
@@ -44,7 +45,7 @@ int currentGrid = 0;
 // Knob Objects
 knob gridKnob; // used for grid granularity adjustment
 knob threshKnob; // used for trigger threshold adjustment
-knob falloffKnob;
+knob falloffKnob; // used to adjust oscilloscope falloff value
 
 static final String KNOB_IMAGE = "knob.png";
 static final String KNOB_ALPHA = "knob-alpha.png";
@@ -82,16 +83,16 @@ void draw() {
     }
   }
 
-  drawGridBorder();
-  drawTextValues();
+  drawGridBorder(); // mask oscilloscope data
+  drawTextValues(); // dynamic labels
   gridKnob.drawKnob();
   threshKnob.drawKnob();
   falloffKnob.drawKnob();
 }
 
-int noiseRemoval = 0;
 void serialEvent(Serial p) {
   int dataIn = byte(aPort.read()) & 0xFF;
+  
   if (noiseRemoval > 100) {
     voltageValues.add(dataIn);
   } else {
@@ -119,7 +120,7 @@ void drawGridBorder() {
   noFill();
   strokeWeight(3);
   strokeCap(ROUND);
-  hint(ENABLE_STROKE_PURE); // This increases the draw quality of a stroke at the expense of performance
+  hint(ENABLE_STROKE_PURE); // This increases the draw quality of a stroke at the expense of performance - enables anti - aliasing
   stroke(GRID_COLOUR[0], GRID_COLOUR[1], GRID_COLOUR[2]);
   rect(OSCILLOSCOPE_OFFSET - 1, OSCILLOSCOPE_OFFSET -1, OSCILLOSCOPE_WIDTH + 1, OSCILLOSCOPE_HEIGHT + 1);
   popMatrix();
@@ -131,7 +132,7 @@ void drawCurve() { // starting index
   float volts;
   pushMatrix();
   noFill();
-  curveTightness(1.0);
+  curveTightness(1.0); // modifies quality of vertex
   translate(OSCILLOSCOPE_OFFSET - 3, OSCILLOSCOPE_OFFSET);
   strokeWeight(2);
   stroke(CURVE_COLOUR[0], CURVE_COLOUR[1], CURVE_COLOUR[2]);
@@ -170,7 +171,7 @@ void initGrids() {
 
 // Draws a new grid
 void drawGrid(PGraphics grid) {
-  imageMode(CORNER);
+  imageMode(CORNER); // interprets following image placement parameters as location of corner (4th and 5th parameters would be opposite corner
   image(grid, OSCILLOSCOPE_OFFSET, OSCILLOSCOPE_OFFSET);
 }
 
