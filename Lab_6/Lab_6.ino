@@ -13,49 +13,29 @@
 
 
 #define BUTTON 2
+#define LEDPIN 7
 #define READ_DURATION 15000000 // microseconds to sample for
 
-volatile int readValues = 0;
+volatile bool readingValues = false;
 volatile uint8_t voltage;
+volatile unsigned long timeButtonLastPressed;
+volatile unsigned long timeStartMeasuring;
+
+// debugging junk
 volatile unsigned long numValuesRead;
 volatile unsigned long lastRead;
-volatile unsigned long timer;
 
 void setup() {
   Serial.begin(115200);
   pinMode(BUTTON, INPUT_PULLUP);
-  //attachInterrupt(1, buttonISR, FALLING); // Arduino interrupt 1 connects to Digital Pin 2
-  adcSetup();
-}
-void loop() {
-  //if (readValues) {
-    timer = micros();
-    numValuesRead = 0;
-    while( (timer + READ_DURATION) > micros() ) {
-      voltage = adcRead();
-      Serial.write( char(voltage) );
-      numValuesRead++;
-    }
-    readValues = 0;
-    Serial.println(" ");
-    Serial.println(String(micros() - timer)); // output total time timer was on
-    Serial.println(String(numValuesRead));
-  //}
-}
+  attachInterrupt(1, buttonISR, CHANGE); // Arduino interrupt 1 connects to Digital Pin 2
+  pinMode(LEDPIN, OUTPUT);
+  digitalWrite(LEDPIN, LOW);
+  // based on: http://garretlab.web.fc2.com/en/arduino/inside/arduino/wiring_analog.c/analogRead.html
+  // datasheet: http://www.atmel.com/images/Atmel-8271-8-bit-AVR-Microcontroller-ATmega48A-48PA-88A-88PA-168A-168PA-328-328P_datasheet_Complete.pdf
+  // around page 234 is useful
+  // also nice: http://openenergymonitor.blogspot.ca/2012/08/low-level-adc-control-admux.html
 
-void buttonISR() {
-  static unsigned long lastPress;
-  if (lastPress + READ_DURATION < micros()) {
-    readValues = 1;
-    lastPress = micros();
-  }
-}
-
-// based on: http://garretlab.web.fc2.com/en/arduino/inside/arduino/wiring_analog.c/analogRead.html
-// datasheet: http://www.atmel.com/images/Atmel-8271-8-bit-AVR-Microcontroller-ATmega48A-48PA-88A-88PA-168A-168PA-328-328P_datasheet_Complete.pdf
-// around page 234 is useful
-// also nice: http://openenergymonitor.blogspot.ca/2012/08/low-level-adc-control-admux.html
-void adcSetup() {
   // set the analog reference (high two bits of ADMUX) and select the
   // channel (low 4 bits).  this also sets ADLAR (left-adjust result)
   // to 0 (the default).
@@ -65,30 +45,68 @@ void adcSetup() {
   // ADLAR = 1 (sets ADC value left-aligned, so we can just read ADCH (high bits)
   // sets mux to read analog pin 0
   ADMUX = 0b01100000;
-  //
-  // with: http://www.openmusiclabs.com/learning/digital/atmega-adc/
-  // decided on 1Mhz adc clock
+
+  // decided on 1Mhz adc clock based on http://www.openmusiclabs.com/learning/digital/atmega-adc/
   // reference: page 249 in datasheet
-  ADCSRA = 0b10000100;
-  
+  // ADCSRA bits from high to low
+  // --------------------------------------------------------------
+  // ADEN  = 1   ADC enabled
+  // ADSC  = 0   ADC doesn't need to start conversion yet
+  // ADATE = 1   ADC autotrigger enabled
+  // ADIF  = 0   ADC interrupt flag (off?)
+  // ADIE  = 1   ADC interrupt enabled
+  // ADPS2 = 1   ADC prescaler bit (divide 16 MHz by 16)
+  // ADPS1 = 0   ADC prescaler bit (page 250 in datasheet)
+  // ADPS0 = 0   ADC prescaler bit
+  ADCSRA = 0b10101100;
+
   //ADCSRB = 0b00000000 | ADCSRB;
-  
-  // suggested by music doods
-  DIDR1 = 0b00000000;
+
+  // turn off digital input buffers for analog pins.
+  // Arduino core might already do this, but let's do it again anyway.
+  DIDR0 = 0b00111111;
 }
 
-uint8_t adcRead() {
-  sbi(ADCSRA, ADSC);
+void loop() {
+  // check if we're supposed to be reading values
+  if (readingValues) {
+    // check if the button timer has elapsed
+    // if this is broken, let's have a longer look at
+    // http://stackoverflow.com/questions/61443/rollover-safe-timer-tick-comparisons
+    // http://playground.arduino.cc/Code/TimingRollover
+    if (micros() - timeButtonLastPressed > READ_DURATION) {
+      readingValues = false;
+      digitalWrite(LEDPIN, LOW);
+      
+      // timing/debug output barf
+      //float secondsElapsed = float(micros() - timeStartMeasuring) / 1000000.0;
+      //Serial.println(" ");
+      //Serial.println(String(secondsElapsed) + " seconds elapsed"); // output total time timer was on
+      //Serial.println(String(numValuesRead) + " values read");
+      //Serial.println(String(float(numValuesRead) / (float(secondsElapsed))) + " samples per second");
+      //numValuesRead = 0;
+    } else {
+      Serial.write( char(voltage) );
+      numValuesRead++; // could remove this, but kept it in for timing purposes
+      // Serial.flush()
+      // If we want to prevent blocking on the Serial.write() above, we can Serial.flush(),
+      // But it knocks a bunch off our throughput, so I'm going to stop.
+    }
+  }
+}
 
-  // ADSC is cleared when the conversion finishes
-  while (bit_is_set(ADCSRA, ADSC));
+// ADC interrupt service routine
+ISR(ADC_vect) {
+  voltage = ADCH;
+}
 
-  // we have to read ADCL first; doing so locks both ADCL
-  // and ADCH until ADCH is read.  reading ADCL second would
-  // cause the results of each conversion to be discarded,
-  // as ADCL and ADCH would be locked when it completed.
-  //low  = ADCL;
-
-  return ADCH;
-
+void buttonISR() {
+  if (readingValues == true) {
+    timeButtonLastPressed = micros();
+  } else {
+    timeStartMeasuring = micros();
+    readingValues = true;
+    timeButtonLastPressed = micros();
+    digitalWrite(7, HIGH);
+  }
 }
