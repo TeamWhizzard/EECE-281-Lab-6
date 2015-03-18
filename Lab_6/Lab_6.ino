@@ -19,14 +19,6 @@
  * ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
  */
 
-// from: http://playground.arduino.cc/Main/AVR
-#ifndef cbi
-#define cbi(sfr, bit) (_SFR_BYTE(sfr) &= ~_BV(bit))
-#endif
-#ifndef sbi
-#define sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))
-#endif
-
 #define BUTTON 2
 #define LEDPIN 7
 #define READ_DURATION 15000000 // microseconds to sample for
@@ -60,10 +52,10 @@ void setup() {
   // REFS0 = 1   select Arduino-std voltage reference
   // ADLAR = 1   left-aligned ADC reference (lets us pull just high values, ADCH)
   // resvd = 0   write 0 for compatibility
-  // MUX3  = 0   select ADC0
-  // MUX2  = 0   select ADC0
-  // MUX1  = 0   select ADC0
-  // MUX0  = 0   select ADC0
+  // MUX3  = 0   select ADC: Analog Pin 0
+  // MUX2  = 0   select ADC: Analog Pin 0
+  // MUX1  = 0   select ADC: Analog Pin 0
+  // MUX0  = 0   select ADC: Analog Pin 0
   ADMUX = 0b01100000;
 
   // decided on 1Mhz adc clock based on http://www.openmusiclabs.com/learning/digital/atmega-adc/
@@ -73,7 +65,7 @@ void setup() {
   // ADEN  = 1   ADC enabled
   // ADSC  = 1   ADC start measuring
   // ADATE = 1   ADC autotrigger enabled
-  // ADIF  = 0   ADC interrupt flag (off?)
+  // ADIF  = 0   ADC interrupt flag off
   // ADIE  = 1   ADC interrupt enabled
   // ADPS2 = 1   ADC prescaler bit (divide 16 MHz by 16)
   // ADPS1 = 0   ADC prescaler bit (page 250 in datasheet)
@@ -93,12 +85,10 @@ void setup() {
   ADCSRB = 0b00000000;
 
   // turn off digital input buffers for analog pins.
+  // reduces noise on that pin
   // suggested by: http://www.openmusiclabs.com/learning/digital/atmega-adc/
   // Arduino core might already do this, but let's do it again anyway.
   DIDR0 = 0b00111111;
-  
-  // set global interrupt bit on
-  //sei();
 }
 
 void loop() {
