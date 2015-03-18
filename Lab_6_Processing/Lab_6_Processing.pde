@@ -79,12 +79,11 @@ void serialEvent(Serial p) {
   voltageValues.add(dataIn);
 }
 
-
 /* draws oscilloscope curve given starting index */
 void drawCurve() { // starting index
-  int xCoord = OSCILLOSCOPE_OFFSET; // start just after screen margin
+  int xCoord = OSCILLOSCOPE_OFFSET;
   float volts;
-
+  pushMatrix();
   smooth();
   fill(255);
 
@@ -95,10 +94,12 @@ void drawCurve() { // starting index
     volts = map(volts, 0, 255, 0, 5);
     volts = map(volts, 0, 5, 0, OSCILLOSCOPE_HEIGHT);
     //println(voltageValues.size());
-    curveVertex(xCoord, volts); // initialize point to be factored in to spline curve
+
+    curveVertex(xCoord, volts + OSCILLOSCOPE_OFFSET); 
     xCoord+= (OSCILLOSCOPE_WIDTH / numDispValues);
   }
   endShape();
+  popMatrix();
 }
 
 // create a grid
@@ -195,10 +196,12 @@ class knob {
   }
 
   void drawKnob() {
+    pushMatrix();
     imageMode(CENTER); // Draws from the centre
     translate(x, y); // Moves our 0, 0 point to x and y so all references happen from a centralized point.
     rotate(radians(rotation)); // set knob orientation
     image(knobImage, 0, 0); // draw the knob in the window
+    popMatrix();
   }
 
   void rotateKnob() {
