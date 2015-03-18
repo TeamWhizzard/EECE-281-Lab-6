@@ -27,10 +27,15 @@ static final int OSCILLOSCOPE_FLOOR = 549;
 static final int[] CURVE_COLOUR = {
   255, 237, 11
 }; 
+float vMax = 0;
+float vMin = 0;
+float vP2P = 0;
+
+
 
 // Background Image
 PImage backgroundImage;
-static final String OSCILLOSCOPE_IMAGE = "oscilloscope.png";
+static final String OSCILLOSCOPE_IMAGE = "oscilloscopeMin.png";
 
 // Grids
 static final int[] GRID_COLOUR = {
@@ -60,12 +65,13 @@ void setup() {
   aPort.buffer(1);
 
   initGrids(); // Create the grids for rendering but don't draw them yet
-  gridKnob = new knob(898, 200, 4); // Creates a knob at X, Y with W switch settings.
-  threshKnob = new knob(898, 350, 4); // Creates a knob at X, Y with W switch settings.
-  falloffKnob = new knob(898, 500, 4); // Creates a knob at X, Y with W switch settings.
+  gridKnob = new knob(898, 270, 4); // Creates a knob at X, Y with W switch settings.
+  threshKnob = new knob(898, 420, 4); // Creates a knob at X, Y with W switch settings.
+  falloffKnob = new knob(898, 570, 4); // Creates a knob at X, Y with W switch settings.
   
   // initialize GUI
   background(backgroundImage);
+  drawGridValues(); // dynamic labels
   drawGrid(grids[currentGrid]);
 }
 
@@ -77,7 +83,7 @@ void draw() {
         background(backgroundImage); // We need to redraw the background to clear the screen every time
         drawGrid(grids[currentGrid]);
         drawCurve();
-        drawTextValues(); // dynamic labels  
+        drawGridValues();      
     }
     } else {
       voltageValues.remove(); 
@@ -86,6 +92,7 @@ void draw() {
 
   drawGridBorder(); // mask oscilloscope data
   
+  //drawTextValues(); // dynamic labels // label with image clear to eliminate overlapping current and previous values
   gridKnob.drawKnob();
   threshKnob.drawKnob();
   falloffKnob.drawKnob();
@@ -103,13 +110,13 @@ void serialEvent(Serial p) {
   println(dataIn);
 }
 
-void drawTextValues() {
-  textSize(20);
+void drawGridValues() {
+  textSize(30);
   
   // Time Scale of grid - calculated in microseconds
   int totalSegments = OSCILLOSCOPE_WIDTH / GRID_SIZES[currentGrid];
   float scale = ARDUINO_SAMPLE_RATE / totalSegments;
-  text(str(scale) + " us", 860, 150);
+  text(str(scale) + " us", 860, 220);
 }
 
 void drawGridBorder() {
@@ -127,27 +134,51 @@ void drawGridBorder() {
 void drawCurve() { // starting index
   float time;
   float volts;
+  
   pushMatrix();
   noFill();
   curveTightness(1.0); // modifies quality of vertex
   translate(OSCILLOSCOPE_OFFSET - 3, OSCILLOSCOPE_OFFSET);
   strokeWeight(2);
   stroke(CURVE_COLOUR[0], CURVE_COLOUR[1], CURVE_COLOUR[2]);
+  
   beginShape();
   for (int x = 0; x < falloffCount; x++) {
     // maps values to correct screen ratio
     volts = float(voltageValues.remove());
-    //println(voltageValues.size());
     volts = map(volts, 0, 255, 30, OSCILLOSCOPE_HEIGHT - 30);
+    
+    getVoltsDisplay(volts);
+    
     time = map(x, 0, falloffCount, 0, OSCILLOSCOPE_WIDTH + 6);
-  //  println (time);
     curveVertex(time, volts);
   }
   endShape();
   popMatrix();
-
+  
+  drawVoltText();
+  
   voltageValues.clear();
-  //println(voltageValues.size());
+  
+  //reset voltage calculations
+  vMax = 0;
+  vMin = 0;
+}
+
+void drawVoltText() {
+ vP2P = vMax - vMin;
+
+ textSize(30);
+
+ text(vMax, 900, 15);
+ text(vP2P, 900, 74);
+ text(vMin, 900, 141); 
+}
+
+
+void getVoltsDisplay(float volts) {
+  if (volts > vMax) vMax = volts;
+  if (volts < vMin) vMin = volts;
 }
 
 // create a grid
@@ -164,7 +195,7 @@ void initGrids() {
     }
     grids[i].endDraw();
   }
-}
+
 
 // Draws a new grid
 void drawGrid(PGraphics grid) {
