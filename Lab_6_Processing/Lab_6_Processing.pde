@@ -9,7 +9,8 @@ int noiseRemoval = 0; // skip initial serial readings to eliminiate innacurate v
 Queue<Integer> voltageValues = new LinkedList<Integer>(); // linked list to sort serial data FIFO
 
 int falloffCount = 150; // number of values to be displayed simultaneously on the screen
-int threshold = 150; // oscilloscope trigger threshold
+int threshold = 150; // oscilloscope trigger threshold set by knob
+int thresholdCurrent = 150; // threshold at beginning of draw loop
 
 static final int ARDUINO_SAMPLE_RATE = 11775; // Hz
 
@@ -35,7 +36,7 @@ float vP2P = 0;
 
 // Background Image
 PImage backgroundImage;
-static final String OSCILLOSCOPE_IMAGE = "oscilloscopeMin.png";
+static final String OSCILLOSCOPE_IMAGE = "oscilloscopeFull.png";
 
 // Grids
 static final int[] GRID_COLOUR = {
@@ -76,8 +77,10 @@ void setup() {
 }
 
 void draw() {
+  thresholdCurrent = threshold;
+  
   if (voltageValues.peek() != null) {
-    if (voltageValues.peek() >= threshold) {
+    if (voltageValues.peek() >= thresholdCurrent) {
       if (voltageValues.size() >= falloffCount) {
   
         background(backgroundImage); // We need to redraw the background to clear the screen every time
@@ -116,7 +119,7 @@ void drawGridValues() {
   // Time Scale of grid - calculated in microseconds
   int totalSegments = OSCILLOSCOPE_WIDTH / GRID_SIZES[currentGrid];
   float scale = ARDUINO_SAMPLE_RATE / totalSegments;
-  text(str(scale) + " us", 860, 220);
+  text(str(scale) + " µs", 840, 220);
 }
 
 void drawGridBorder() {
@@ -146,9 +149,8 @@ void drawCurve() { // starting index
   for (int x = 0; x < falloffCount; x++) {
     // maps values to correct screen ratio
     volts = float(voltageValues.remove());
-    volts = map(volts, 0, 255, 30, OSCILLOSCOPE_HEIGHT - 30);
-    
     getVoltsDisplay(volts);
+    volts = map(volts, 0, 255, 30, OSCILLOSCOPE_HEIGHT - 30);
     
     time = map(x, 0, falloffCount, 0, OSCILLOSCOPE_WIDTH + 6);
     curveVertex(time, volts);
@@ -156,7 +158,7 @@ void drawCurve() { // starting index
   endShape();
   popMatrix();
   
-  drawVoltText();
+ drawVoltText();
   
   voltageValues.clear();
   
@@ -170,15 +172,16 @@ void drawVoltText() {
 
  textSize(30);
 
- text(vMax, 900, 15);
- text(vP2P, 900, 74);
- text(vMin, 900, 141); 
+ text(vMax, 892, 45);
+ text(vP2P, 892, 100);
+ text(vMin, 892, 165); 
 }
 
 
 void getVoltsDisplay(float volts) {
-  if (volts > vMax) vMax = volts;
-  if (volts < vMin) vMin = volts;
+  float v = map(volts, 0, 255, 0, 5);
+  if (v > vMax) vMax = v;
+  if (v < vMin) vMin = v;
 }
 
 // create a grid
@@ -195,6 +198,7 @@ void initGrids() {
     }
     grids[i].endDraw();
   }
+}
 
 
 // Draws a new grid
