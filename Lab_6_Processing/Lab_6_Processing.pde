@@ -6,9 +6,8 @@ Serial aPort; // Arduino serial port
 
 //Voltage Readings
 Queue<Integer> voltageValues = new LinkedList<Integer>();
-static final int numDispValues = 5; // number of values that can be displayed simultaneously
-static final int threshold = 150;
-
+int numDispValues = 5; // number of values that can be displayed simultaneously
+int threshold = 150;
 
 // Window Dimensions
 static final int WINDOW_X = 1000;
@@ -36,7 +35,9 @@ static final int[] GRID_SIZES = {
 int currentGrid = 0;
 
 // Knob Objects
-knob gridKnob;
+knob gridKnob; // used for grid granularity adjustment
+knob threshKnob; // used for trigger threshold adjustment
+knob falloffKnob; // used to adjust number of samples displayed
 static final String KNOB_IMAGE = "knob.png";
 static final String KNOB_ALPHA = "knob-alpha.png";
 
@@ -50,17 +51,21 @@ void setup() {
   aPort.buffer(1);
 
   initGrids(); // Create the grids for rendering but don't draw them yet
-  gridKnob = new knob(898, 200, 4); // Creates a knob at X, Y with W switch settings. 
+  gridKnob = new knob(898, 200, 4); // Creates a knob at X, Y with W switch settings.
+  threshKnob = new knob(898, 350, 4); // Creates a knob at X, Y with W switch settings.
+  falloffKnob = new knob(898, 500, 4); // Creates a knob at X, Y with W switch settings.
 }
 
 void draw() {
   background(backgroundImage); // We need to redraw the background to clear the screen.
   drawGrid(grids[currentGrid]);
   gridKnob.drawKnob();
-    if (voltageValues.peek() != null) {
+  threshKnob.drawKnob();
+  falloffKnob.drawKnob();
+  
+  if (voltageValues.peek() != null) {
     if (voltageValues.peek() >= threshold) {
       if (voltageValues.size() >= numDispValues) {
-        background(backgroundImage); // We need to redraw the background to clear the screen.
         drawCurve();
       }
     } else if (voltageValues.peek() < threshold) {
@@ -72,27 +77,26 @@ void draw() {
 void serialEvent(Serial p) {
   int dataIn = byte(aPort.read()) & 0xFF;
   voltageValues.add(dataIn);
-  //println(dataIn);
 }
 
 
 /* draws oscilloscope curve given starting index */
 void drawCurve() { // starting index
-  int xCoord = 0;
+  int xCoord = OSCILLOSCOPE_OFFSET; // start just after screen margin
   float volts;
-  //  clear(); // clear screen to redraw curve
 
   smooth();
   fill(255);
 
   beginShape();
   for (int i = 0; i < numDispValues; i++) {
+    // maps values to correct screen ratio
     volts = float(voltageValues.remove());
     volts = map(volts, 0, 255, 0, 5);
     volts = map(volts, 0, 5, 0, OSCILLOSCOPE_HEIGHT);
     //println(voltageValues.size());
-    curveVertex(xCoord, volts); 
-    xCoord+= OSCILLOSCOPE_WIDTH / numDispValues;
+    curveVertex(xCoord, volts); // initialize point to be factored in to spline curve
+    xCoord+= (OSCILLOSCOPE_WIDTH / numDispValues);
   }
   endShape();
 }
@@ -125,6 +129,42 @@ void mousePressed() {
     gridKnob.rotateKnob(); // Rotate the knob
     currentGrid = gridKnob.position; // Change the grid to the new position
   }
+  
+  if (threshKnob.isMouseOver()) { 
+    threshKnob.rotateKnob();
+    switch(threshKnob.position) {
+      case 0:
+        threshold = 100;
+        break;
+      case 1:
+        threshold = 150;
+        break;
+      case 2:
+        threshold = 200;
+        break;
+      case 3:
+        threshold = 255;
+        break; 
+    }
+  } 
+  
+  if (falloffKnob.isMouseOver()) {
+    falloffKnob.rotateKnob();
+    switch(falloffKnob.position) {
+      case 0:
+        numDispValues = OSCILLOSCOPE_WIDTH / 6;
+        break;
+      case 1:
+        numDispValues = OSCILLOSCOPE_WIDTH / 4;
+        break;
+      case 2:
+        numDispValues = OSCILLOSCOPE_WIDTH / 3;
+        break;
+      case 3: 
+        numDispValues = OSCILLOSCOPE_WIDTH / 2;
+        break;
+    }
+  }  
 }
 
 // Knob Class
@@ -163,7 +203,7 @@ class knob {
 
   void rotateKnob() {
     switch (knotches) {
-      
+
     case 2: // States for a 2 position knob
       if (rotation == -45) {
         rotation += 90;
@@ -206,7 +246,7 @@ class knob {
       } else if (rotation == 30 && lastPosition == 1) {
         rotation += 60;
         lastPosition = 2;
-        position = 3;        
+        position = 3;
       } else if (rotation == 90) {
         rotation -= 60;
         lastPosition = 3;
