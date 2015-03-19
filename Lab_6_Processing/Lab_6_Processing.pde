@@ -9,7 +9,6 @@ Queue<Integer> voltageValues = new LinkedList<Integer>(); // linked list to sort
 
 int falloffCount = 150; // number of values to be displayed simultaneously on the screen
 int threshold = 150; // oscilloscope trigger threshold set by knob
-int thresholdCurrent = 150; // threshold at beginning of draw loop
 
 static final int ARDUINO_SAMPLE_RATE = 11775; // Hz
 
@@ -27,11 +26,6 @@ static final int OSCILLOSCOPE_FLOOR = 549;
 static final int[] CURVE_COLOUR = {
   255, 237, 11
 }; 
-float vMax = 0;
-float vMin = 5;
-float vP2P = 0;
-
-
 
 // Background Image
 PImage backgroundImage;
@@ -46,6 +40,11 @@ static final int[] GRID_SIZES = {
   20, 25, 50, 100
 };
 int currentGrid = 0;
+
+// values to be dynamically displayed on GUI
+float vMax = 0; // maximum voltage reading of currently displayed curve
+float vMin = 5; // minimum voltage reading of currently displayed curve
+float vP2P = 0; // voltage difference of currently displayed curve
 
 // Knob Objects
 knob gridKnob; // used for grid granularity adjustment
@@ -71,30 +70,23 @@ void setup() {
   
   // initialize GUI
   background(backgroundImage);
-  drawGridValues(); // dynamic labels
   drawGrid(grids[currentGrid]);
 }
 
 void draw() {
-  thresholdCurrent = threshold;
-  
   if (voltageValues.peek() != null) {
-    if (voltageValues.peek() >= thresholdCurrent) {
+    if (voltageValues.peek() >= threshold) {
       if (voltageValues.size() >= falloffCount) {
-  
         background(backgroundImage); // We need to redraw the background to clear the screen every time
         drawGrid(grids[currentGrid]);
         drawCurve();
-        //drawGridValues();      
-    }
+      }
     } else {
       voltageValues.remove(); 
     }
   }
 
   drawGridBorder(); // mask oscilloscope data
-  
-  drawGridValues(); // dynamic labels // label with image clear to eliminate overlapping current and previous values
   gridKnob.drawKnob();
   threshKnob.drawKnob();
   falloffKnob.drawKnob();
@@ -108,22 +100,12 @@ void serialEvent(Serial p) {
   println(dataIn);
 }
 
-void drawGridValues() {
- /* textSize(30);
-  
-  // Time Scale of grid - calculated in microseconds
-  float scale1 = ((falloffCount - 1) * (1 / ARDUINO_SAMPLE_RATE));
-  float scale = scale1 / (float(OSCILLOSCOPE_WIDTH) / float(GRID_SIZES[currentGrid]));
-
-  text(str(scale) + " µs", 840, 220);*/
-}
-
 void drawGridBorder() {
   pushMatrix();
   noFill();
   strokeWeight(3);
   strokeCap(ROUND);
-  //hint(ENABLE_STROKE_PURE); // This increases the draw quality of a stroke at the expense of performance - enables anti - aliasing
+
   stroke(GRID_COLOUR[0], GRID_COLOUR[1], GRID_COLOUR[2]);
   rect(OSCILLOSCOPE_OFFSET - 1, OSCILLOSCOPE_OFFSET -1, OSCILLOSCOPE_WIDTH + 1, OSCILLOSCOPE_HEIGHT + 1);
   popMatrix();
@@ -154,20 +136,19 @@ void drawCurve() { // starting index
   endShape();
   popMatrix();
   
- drawVoltText();
+  drawVoltText();
   
+   // reset voltage calculations
   voltageValues.clear();
-  
-  //reset voltage calculations
   vMax = 0;
   vMin = 5;
 }
 
 void drawVoltText() {
  vP2P = vMax - vMin;
-
  textSize(30);
 
+ // print voltage values to GUI
  text(vMax, 892, 45);
  text(vP2P, 892, 100);
  text(vMin, 892, 165); 
@@ -208,7 +189,6 @@ void mousePressed() {
   if (gridKnob.isMouseOver()) { // Test to see if the mouse was pressed on this knob.
     gridKnob.rotateKnob(); // Rotate the knob
     currentGrid = gridKnob.position; // Change the grid to the new position
-    drawGridValues(); // dynamic labels
   }
 
   if (threshKnob.isMouseOver()) { 
@@ -344,10 +324,6 @@ class knob {
         lastPosition = 1;
         position = 0;
       }
-      break;
-
-    case 5: // States for a 5 position knob (if we ever need it...)
-
       break;
     }
   }
