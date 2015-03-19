@@ -3,7 +3,6 @@ import java.util.*;
 
 //Serial
 Serial aPort; // Arduino serial port
-int noiseRemoval = 0; // skip initial serial readings to eliminiate innacurate values caused by noise
 
 //Voltage Readings
 Queue<Integer> voltageValues = new LinkedList<Integer>(); // linked list to sort serial data FIFO
@@ -29,7 +28,7 @@ static final int[] CURVE_COLOUR = {
   255, 237, 11
 }; 
 float vMax = 0;
-float vMin = 0;
+float vMin = 5;
 float vP2P = 0;
 
 
@@ -86,7 +85,7 @@ void draw() {
         background(backgroundImage); // We need to redraw the background to clear the screen every time
         drawGrid(grids[currentGrid]);
         drawCurve();
-        drawGridValues();      
+        //drawGridValues();      
     }
     } else {
       voltageValues.remove(); 
@@ -95,7 +94,7 @@ void draw() {
 
   drawGridBorder(); // mask oscilloscope data
   
-  //drawTextValues(); // dynamic labels // label with image clear to eliminate overlapping current and previous values
+  drawGridValues(); // dynamic labels // label with image clear to eliminate overlapping current and previous values
   gridKnob.drawKnob();
   threshKnob.drawKnob();
   falloffKnob.drawKnob();
@@ -104,22 +103,19 @@ void draw() {
 void serialEvent(Serial p) {
   int dataIn = byte(aPort.read()) & 0xFF;
   
-  if (noiseRemoval > 100) {
-    voltageValues.add(dataIn);
-  } else {
-    noiseRemoval++;
-  }
+  voltageValues.add(dataIn);
   
   println(dataIn);
 }
 
 void drawGridValues() {
-  textSize(30);
+ /* textSize(30);
   
   // Time Scale of grid - calculated in microseconds
-  int totalSegments = OSCILLOSCOPE_WIDTH / GRID_SIZES[currentGrid];
-  float scale = ARDUINO_SAMPLE_RATE / totalSegments;
-  text(str(scale) + " µs", 840, 220);
+  float scale1 = ((falloffCount - 1) * (1 / ARDUINO_SAMPLE_RATE));
+  float scale = scale1 / (float(OSCILLOSCOPE_WIDTH) / float(GRID_SIZES[currentGrid]));
+
+  text(str(scale) + " µs", 840, 220);*/
 }
 
 void drawGridBorder() {
@@ -164,7 +160,7 @@ void drawCurve() { // starting index
   
   //reset voltage calculations
   vMax = 0;
-  vMin = 0;
+  vMin = 5;
 }
 
 void drawVoltText() {
@@ -212,7 +208,7 @@ void mousePressed() {
   if (gridKnob.isMouseOver()) { // Test to see if the mouse was pressed on this knob.
     gridKnob.rotateKnob(); // Rotate the knob
     currentGrid = gridKnob.position; // Change the grid to the new position
-    //drawTextValues(); // dynamic labels
+    drawGridValues(); // dynamic labels
   }
 
   if (threshKnob.isMouseOver()) { 
